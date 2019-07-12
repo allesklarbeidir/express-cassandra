@@ -31,7 +31,7 @@ validators.is_uuid = (obj) => ((obj instanceof cql.types.Uuid));
 validators.is_inet = (obj) => ((obj instanceof cql.types.InetAddress));
 validators.is_frozen = (obj) => ((validators.is_array(obj) || validators.is_object(obj)));
 // YugaByte YCQL JSONB Datatype:
-validators.is_jsonb = (obj) => (obj.indexOf("\"__$isJSONB\":true}") === obj.length - "\"__$isJSONB\":true}".length);
+validators.is_jsonb = (obj) => (obj.__$isJSONB);
 
 const TYPE_MAP = {
   ascii: { validator: validators.is_string },
