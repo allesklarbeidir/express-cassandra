@@ -30,8 +30,8 @@ validators.is_timeuuid = (obj) => ((obj instanceof cql.types.TimeUuid));
 validators.is_uuid = (obj) => ((obj instanceof cql.types.Uuid));
 validators.is_inet = (obj) => ((obj instanceof cql.types.InetAddress));
 validators.is_frozen = (obj) => ((validators.is_array(obj) || validators.is_object(obj)));
-// YugaByte YCQL: JSONB Datatype:
-validators.is_jsonb = (obj) => (obj.__proto__ && obj.__proto__.name === "Proxy" && obj.name === "JSONB");
+// YugaByte YCQL JSONB Datatype:
+validators.is_jsonb = (obj) => (obj.__$isJSONB);
 
 const TYPE_MAP = {
   ascii: { validator: validators.is_string },
@@ -59,7 +59,7 @@ const TYPE_MAP = {
   varint: { validator: validators.is_var_int },
   frozen: { validator: validators.is_frozen },
 
-  // YugaByte YCQL: JSONB Datatype:
+  // YugaByte YCQL JSONB Datatype:
   jsonb: { validator: validators.is_jsonb }
 };
 
