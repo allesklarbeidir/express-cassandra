@@ -17,6 +17,7 @@ const datatypes = require('../validators/datatypes');
 const schemer = require('../validators/schema');
 
 const parser = {};
+const setCharAt = (str,index, chr) => str.substr(0,index) + chr + str.substr(index+1);
 
 parser.formatJSONBColumnAware = function(formatString, ...params){
 
@@ -40,8 +41,8 @@ parser.formatJSONBColumnAware = function(formatString, ...params){
         formatString[fp.index-1] === '"' &&
         formatString[fp.index+2] === '"'
       ){
-        formatString[fp.index-1] = " ";
-        formatString[fp.index+2] = " ";
+        formatString = setCharAt(formatString, fp.index-1, " ");
+        formatString = setCharAt(formatString, fp.index+2, " ");
       }
     }
   });
