@@ -18,6 +18,37 @@ const schemer = require('../validators/schema');
 
 const parser = {};
 
+parser.formatJSONBColumnAware = function(formatString, ...params){
+
+  const placeholders = [];
+
+  const re = /%./g;
+  let match;
+  do {
+      match = re.exec(formatString);
+      if (match) {
+          placeholders.push(match)
+      }
+  } while (m);
+
+  (params || []).forEach((p,i) => {
+    if(i < placeholders.length && typeof(p) === "string" && p.indexOf("->") !== -1){
+      const fp = placeholders[i];
+      if(
+        fp.index > 0 &&
+        formatString.length > fp.index+2 &&
+        formatString[fp.index-1] === '"' &&
+        formatString[fp.index+2] === '"'
+      ){
+        formatString[fp.index-1] = " ";
+        formatString[fp.index+2] = " ";
+      }
+    }
+  });
+
+  return util.format(formatString, ...params);
+}
+
 parser.callback_or_throw = function f(err, callback) {
   if (typeof callback === 'function') {
     callback(err);
@@ -96,7 +127,7 @@ parser.get_db_value_expression = function f(schema, fieldName, fieldValue) {
   }
 
   if (fieldType === 'counter') {
-    let counterQuerySegment = util.format('"%s"', fieldName);
+    let counterQuerySegment = parser.formatJSONBColumnAware('"%s"', fieldName);
     if (fieldValue >= 0) counterQuerySegment += ' + ?';
     else counterQuerySegment += ' - ?';
     fieldValue = Math.abs(fieldValue);
@@ -130,7 +161,7 @@ parser.get_inplace_update_expression = function f(schema, fieldName, fieldValue,
   const dbVal = parser.get_db_value_expression(schema, fieldName, fieldValue);
 
   if (!_.isPlainObject(dbVal) || !dbVal.query_segment) {
-    updateClauses.push(util.format('"%s"=%s', fieldName, dbVal));
+    updateClauses.push(parser.formatJSONBColumnAware('"%s"=%s', fieldName, dbVal));
     return;
   }
 
@@ -138,10 +169,10 @@ parser.get_inplace_update_expression = function f(schema, fieldName, fieldValue,
 
   if (['map', 'list', 'set'].includes(fieldType)) {
     if ($add || $append) {
-      dbVal.query_segment = util.format('"%s" + %s', fieldName, dbVal.query_segment);
+      dbVal.query_segment = parser.formatJSONBColumnAware('"%s" + %s', fieldName, dbVal.query_segment);
     } else if ($prepend) {
       if (fieldType === 'list') {
-        dbVal.query_segment = util.format('%s + "%s"', dbVal.query_segment, fieldName);
+        dbVal.query_segment = parser.formatJSONBColumnAware('%s + "%s"', dbVal.query_segment, fieldName);
       } else {
         throw (buildError(
           'model.update.invalidprependop',
@@ -149,14 +180,14 @@ parser.get_inplace_update_expression = function f(schema, fieldName, fieldValue,
         ));
       }
     } else if ($remove) {
-      dbVal.query_segment = util.format('"%s" - %s', fieldName, dbVal.query_segment);
+      dbVal.query_segment = parser.formatJSONBColumnAware('"%s" - %s', fieldName, dbVal.query_segment);
       if (fieldType === 'map') dbVal.parameter = Object.keys(dbVal.parameter);
     }
   }
 
   if ($replace) {
     if (fieldType === 'map') {
-      updateClauses.push(util.format('"%s"[?]=%s', fieldName, dbVal.query_segment));
+      updateClauses.push(parser.formatJSONBColumnAware('"%s"[?]=%s', fieldName, dbVal.query_segment));
       const replaceKeys = Object.keys(dbVal.parameter);
       const replaceValues = _.values(dbVal.parameter);
       if (replaceKeys.length === 1) {
@@ -168,7 +199,7 @@ parser.get_inplace_update_expression = function f(schema, fieldName, fieldValue,
         );
       }
     } else if (fieldType === 'list') {
-      updateClauses.push(util.format('"%s"[?]=%s', fieldName, dbVal.query_segment));
+      updateClauses.push(parser.formatJSONBColumnAware('"%s"[?]=%s', fieldName, dbVal.query_segment));
       if (dbVal.parameter.length === 2) {
         queryParams.push(dbVal.parameter[0]);
         queryParams.push(dbVal.parameter[1]);
@@ -185,7 +216,7 @@ parser.get_inplace_update_expression = function f(schema, fieldName, fieldValue,
       ));
     }
   } else {
-    updateClauses.push(util.format('"%s"=%s', fieldName, dbVal.query_segment));
+    updateClauses.push(parser.formatJSONBColumnAware('"%s"=%s', fieldName, dbVal.query_segment));
     queryParams.push(dbVal.parameter);
   }
 };
@@ -286,7 +317,7 @@ parser.get_save_value_expression = function fn(instance, schema, callback) {
       }
     }
 
-    identifiers.push(util.format('"%s"', fieldName));
+    identifiers.push(parser.formatJSONBColumnAware('"%s"', fieldName));
 
     try {
       const dbVal = parser.get_db_value_expression(schema, fieldName, fieldValue);
@@ -333,13 +364,13 @@ parser.extract_query_relations = function f(fieldName, relationKey, relationValu
   const buildQueryRelations = (fieldNameLocal, relationValueLocal) => {
     const dbVal = parser.get_db_value_expression(schema, fieldNameLocal, relationValueLocal);
     if (_.isPlainObject(dbVal) && dbVal.query_segment) {
-      queryRelations.push(util.format(
+      queryRelations.push(parser.formatJSONBColumnAware(
         whereTemplate,
         fieldNameLocal, operator, dbVal.query_segment,
       ));
       queryParams.push(dbVal.parameter);
     } else {
-      queryRelations.push(util.format(
+      queryRelations.push(parser.formatJSONBColumnAware(
         whereTemplate,
         fieldNameLocal, operator, dbVal,
       ));
@@ -389,7 +420,7 @@ parser.extract_query_relations = function f(fieldName, relationKey, relationValu
     if (['map', 'list', 'set', 'frozen'].includes(fieldType1)) {
       if (fieldType1 === 'map' && _.isPlainObject(relationValue)) {
         Object.keys(relationValue).forEach((key) => {
-          queryRelations.push(util.format(
+          queryRelations.push(parser.formatJSONBColumnAware(
             '"%s"[%s] %s %s',
             fieldName, '?', '=', '?',
           ));
@@ -397,7 +428,7 @@ parser.extract_query_relations = function f(fieldName, relationKey, relationValu
           queryParams.push(relationValue[key]);
         });
       } else {
-        queryRelations.push(util.format(
+        queryRelations.push(parser.formatJSONBColumnAware(
           whereTemplate,
           fieldName, operator, '?',
         ));
@@ -566,9 +597,9 @@ parser.get_primary_key_clauses = function f(schema) {
     if (schema.clustering_order
         && schema.clustering_order[clusteringKey[field]]
         && schema.clustering_order[clusteringKey[field]].toLowerCase() === 'desc') {
-      clusteringOrder.push(util.format('"%s" DESC', clusteringKey[field]));
+      clusteringOrder.push(parser.formatJSONBColumnAware('"%s" DESC', clusteringKey[field]));
     } else {
-      clusteringOrder.push(util.format('"%s" ASC', clusteringKey[field]));
+      clusteringOrder.push(parser.formatJSONBColumnAware('"%s" ASC', clusteringKey[field]));
     }
   }
 
@@ -579,14 +610,14 @@ parser.get_primary_key_clauses = function f(schema) {
 
   let partitionKeyClause = '';
   if (_.isArray(partitionKey)) {
-    partitionKeyClause = partitionKey.map((v) => util.format('"%s"', v)).join(',');
+    partitionKeyClause = partitionKey.map((v) => parser.formatJSONBColumnAware('"%s"', v)).join(',');
   } else {
-    partitionKeyClause = util.format('"%s"', partitionKey);
+    partitionKeyClause = parser.formatJSONBColumnAware('"%s"', partitionKey);
   }
 
   let clusteringKeyClause = '';
   if (clusteringKey.length) {
-    clusteringKey = clusteringKey.map((v) => util.format('"%s"', v)).join(',');
+    clusteringKey = clusteringKey.map((v) => parser.formatJSONBColumnAware('"%s"', v)).join(',');
     clusteringKeyClause = util.format(',%s', clusteringKey);
   }
 
@@ -658,7 +689,7 @@ parser.get_orderby_clause = function f(queryObject) {
           }
 
           for (let j = 0; j < orderFields.length; j++) {
-            orderKeys.push(util.format(
+            orderKeys.push(parser.formatJSONBColumnAware(
               '"%s" %s',
               orderFields[j], cqlOrderDirection[orderItemKeys[i]],
             ));
@@ -713,20 +744,20 @@ parser.get_select_clause = function f(options) {
       const selection = options.select[i].split(/[(, )]/g).filter((e) => (e));
       if (selection.length === 1) {
         if (selection[0] === '*') selectArray.push('*');
-        else selectArray.push(util.format('"%s"', selection[0]));
+        else selectArray.push(parser.formatJSONBColumnAware('"%s"', selection[0]));
       } else if (selection.length === 2) {
-        selectArray.push(util.format('%s("%s")', selection[0], selection[1]));
+        selectArray.push(parser.formatJSONBColumnAware('%s("%s")', selection[0], selection[1]));
       } else if (selection.length >= 3 && selection[selection.length - 2].toLowerCase() === 'as') {
         const selectionEndChunk = selection.splice(selection.length - 2);
         let selectionChunk = '';
         if (selection.length === 1) {
-          selectionChunk = util.format('"%s"', selection[0]);
+          selectionChunk = parser.formatJSONBColumnAware('"%s"', selection[0]);
         } else if (selection.length === 2) {
-          selectionChunk = util.format('%s("%s")', selection[0], selection[1]);
+          selectionChunk = parser.formatJSONBColumnAware('%s("%s")', selection[0], selection[1]);
         } else {
           selectionChunk = util.format('%s(%s)', selection[0], `"${selection.splice(1).join('","')}"`);
         }
-        selectArray.push(util.format('%s AS "%s"', selectionChunk, selectionEndChunk[1]));
+        selectArray.push(parser.formatJSONBColumnAware('%s AS "%s"', selectionChunk, selectionEndChunk[1]));
       } else if (selection.length >= 3) {
         selectArray.push(util.format('%s(%s)', selection[0], `"${selection.splice(1).join('","')}"`));
       }
