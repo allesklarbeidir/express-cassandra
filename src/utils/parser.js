@@ -29,7 +29,7 @@ parser.formatJSONBColumnAware = function(formatString, ...params){
       if (match) {
           placeholders.push(match)
       }
-  } while (m);
+  } while (match);
 
   (params || []).forEach((p,i) => {
     if(i < placeholders.length && typeof(p) === "string" && p.indexOf("->") !== -1){
