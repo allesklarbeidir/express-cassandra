@@ -59,13 +59,13 @@ parser.db_value_without_bind_for_JSONB_YCQL_Bug = function f(schema, fieldName, 
       return JSON.stringify(fieldValue);
     }
   }
-  else{
-    const fieldNameRoot = fieldName.replace(/\"/g, "");
-    const fieldRootType = schema.fields[fieldNameRoot].type || null;
-    if(fieldRootType === "jsonb"){
-      return JSON.stringify(fieldValue);
-    }
-  }
+  // else{
+  //   const fieldNameRoot = fieldName.replace(/\"/g, "");
+  //   const fieldRootType = schema.fields[fieldNameRoot].type || null;
+  //   if(fieldRootType === "jsonb"){
+  //     return JSON.stringify(fieldValue);
+  //   }
+  // }
   
   return null;
 }
