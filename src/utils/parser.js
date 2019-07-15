@@ -55,8 +55,13 @@ parser.db_value_without_bind_for_JSONB_YCQL_Bug = function f(schema, fieldName, 
   if(isJsonbAttr){
     const fieldNameRoot = fieldName.substr(0, fieldName.indexOf("->")).replace(/\"/g, "");
     const fieldRootType = schema.fields[fieldNameRoot].type || null;
-    if(fieldRootType === "jsonb"){
-      return JSON.stringify(fieldValue);
+    if (fieldRootType === "jsonb") {
+      if(typeof(fieldValue) === "string"){
+        return util.format("'%s'", fieldValue);
+      }
+      else{
+        return util.format("'%s'", JSON.stringify(fieldValue));
+      }
     }
   }
   // else{
