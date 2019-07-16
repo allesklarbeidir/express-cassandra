@@ -49,31 +49,6 @@ parser.formatJSONBColumnAware = function f(formatString, ...params){
 
   return util.format(formatString, ...params);
 }
-parser.db_value_without_bind_for_JSONB_YCQL_Bug = function f(schema, fieldName, fieldValue){
-  
-  const isJsonbAttr = fieldName.indexOf("->") !== -1;
-  if(isJsonbAttr){
-    const fieldNameRoot = fieldName.substr(0, fieldName.indexOf("->")).replace(/\"/g, "");
-    const fieldRootType = schema.fields[fieldNameRoot].type || null;
-    if (fieldRootType === "jsonb") {
-      if(typeof(fieldValue) === "string"){
-        return util.format("'%s'", fieldValue);
-      }
-      else{
-        return util.format("'%s'", JSON.stringify(fieldValue));
-      }
-    }
-  }
-  // else{
-  //   const fieldNameRoot = fieldName.replace(/\"/g, "");
-  //   const fieldRootType = schema.fields[fieldNameRoot].type || null;
-  //   if(fieldRootType === "jsonb"){
-  //     return JSON.stringify(fieldValue);
-  //   }
-  // }
-  
-  return null;
-}
 
 parser.callback_or_throw = function f(err, callback) {
   if (typeof callback === 'function') {
@@ -126,7 +101,7 @@ parser.extract_altered_type = function f(normalizedModelSchema, diff) {
 
 parser.get_db_value_expression = function f(schema, fieldName, fieldValue) {
   if (fieldValue == null || fieldValue === cql.types.unset) {
-    return { query_segment: '?', parameter: fieldValue };
+    return { query_segment: ':boundparam', parameter: fieldValue };
   }
 
   if (_.isPlainObject(fieldValue) && fieldValue.$db_function) {
@@ -144,34 +119,23 @@ parser.get_db_value_expression = function f(schema, fieldName, fieldValue) {
       return dbVal;
     });
 
-    const jsonbUnbindedBecauseOfBug = parser.db_value_without_bind_for_JSONB_YCQL_Bug(schema, fieldName, fieldValue);
-    if(jsonbUnbindedBecauseOfBug){
-      return jsonbUnbindedBecauseOfBug;
-    }
-
-    return { query_segment: '?', parameter: val };
+    return { query_segment: ':boundparam', parameter: val };
   }
 
-  const jsonbUnbindedBecauseOfBug = parser.db_value_without_bind_for_JSONB_YCQL_Bug(schema, fieldName, fieldValue);
-
-  const validationMessage = schemer.get_validation_message(validators, jsonbUnbindedBecauseOfBug || fieldValue);
+  const validationMessage = schemer.get_validation_message(validators, fieldValue);
   if (typeof validationMessage === 'function') {
-    throw (buildError('model.validator.invalidvalue', validationMessage(jsonbUnbindedBecauseOfBug || fieldValue, fieldName, fieldType)));
-  }
-
-  if(jsonbUnbindedBecauseOfBug){
-    return jsonbUnbindedBecauseOfBug;
+    throw (buildError('model.validator.invalidvalue', validationMessage(fieldValue, fieldName, fieldType)));
   }
 
   if (fieldType === 'counter') {
     let counterQuerySegment = parser.formatJSONBColumnAware('"%s"', fieldName);
-    if (fieldValue >= 0) counterQuerySegment += ' + ?';
-    else counterQuerySegment += ' - ?';
+    if (fieldValue >= 0) counterQuerySegment += ' + :boundparam';
+    else counterQuerySegment += ' - :boundparam';
     fieldValue = Math.abs(fieldValue);
     return { query_segment: counterQuerySegment, parameter: fieldValue };
   }
 
-  return { query_segment: '?', parameter: fieldValue };
+  return { query_segment: ':boundparam', parameter: fieldValue };
 };
 
 parser.unset_not_allowed = function f(operation, schema, fieldName, callback) {
