@@ -8,15 +8,8 @@ const Promise = require('bluebird');
 const _ = require('lodash');
 const path = require('path');
 
-let dseDriver;
-try {
-  // eslint-disable-next-line import/no-extraneous-dependencies, import/no-unresolved
-  dseDriver = require('dse-driver');
-} catch (e) {
-  dseDriver = null;
-}
 
-const cql = Promise.promisifyAll(dseDriver || require('cassandra-driver'));
+const cql = Promise.promisifyAll(require('cassandra-driver'));
 
 const ORM = Promise.promisifyAll(require('./orm/apollo'));
 const readdirpAsync = Promise.promisify(require('readdirp'));
