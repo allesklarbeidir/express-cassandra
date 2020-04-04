@@ -389,7 +389,14 @@ Apollo.prototype = {
 
     // Reset connections on all models
     Object.keys(this._models).forEach((i) => {
+      if(this._models[i]._properties.cql && typeof this._models[i]._properties.cql.close === "function"){
+        this._models[i]._properties.cql.shutdown(()=>{});
+      }
       this._models[i]._properties.cql = this._client;
+      
+      if(this._models[i]._properties.define_connection && typeof this._models[i]._properties.define_connection.close === "function"){
+        this._models[i]._properties.define_connection.shutdown(()=>{});
+      }
       this._models[i]._properties.define_connection = this._define_connection;
     });
   },
@@ -513,6 +520,7 @@ Apollo.prototype = {
       name: modelName,
       schema: modelSchema,
       keyspace: this._keyspace,
+      connection_options: this._connection,
       define_connection: this._define_connection,
       cql: this._client,
       esclient: this._esclient,
