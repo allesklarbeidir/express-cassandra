@@ -29,7 +29,7 @@ Driver.prototype = {
   do_reconnect(callback, counter, error, delay){
     this._properties.cql = new cql.Client(this._properties.connection_options);
     this._properties.define_connection = new cql.Client(this._properties.connection_options);
-    if(true || process.env.DEBUG === "true"){
+    if(process.env.DEBUG === "true"){
       console.warn(`Reconnecting with ${JSON.stringify(delay)}ms delay the ${counter+1}th time because of following error: ${error}`);
     }
     callback(true, counter+1);
